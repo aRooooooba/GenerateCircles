@@ -108,6 +108,6 @@ class MyFrame(wx.Frame):
 
 
 app = wx.App()
-frame = MyFrame(None, title='Draw Circles', size=(440,500))
+frame = MyFrame(None, title='Generate Circles', size=(440,500))
 frame.Show()
 app.MainLoop()
