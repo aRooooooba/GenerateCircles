@@ -6,17 +6,17 @@ Start with a single window containing a grid of $20\times20$ points.
 
 All points start out grey.
 
-The user click to place the center of a circle, drag to set its radius. At the same time, the circle should be drawn.
+Have a button at the bottom of the window called "Generate".
 
-When releasing the mouse button, highlight the points (make them blue) that correspond to the edge of the circle.
+The user can toggle points on and off.
 
-Two additional circles should be created corresponding to the largest and smallest radius of the highlighted points.
+Generate a circle and a ellipses that best fits the highlighted points.
 
 
 
 ## Environment
 
-Ubuntu 18.04.3 LTS, Vim, Python 3.6.8, wxPython 4
+Ubuntu 18.04.3 LTS, Vim, Python 3.6.8, wxPython 4, sympy 1.5.dev0
 
 
 

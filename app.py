@@ -1,5 +1,6 @@
 import wx
-import math
+import random
+from sympy import *
 
 class MyFrame(wx.Frame):
     """
@@ -11,7 +12,8 @@ class MyFrame(wx.Frame):
         panel = wx.Panel(self, id=wx.WindowIDRef(-1))
         
         # 20 * 20 buttons
-        self.buttonPool = []
+        self.buttonPool, self.onPoints = [], []
+        self.isShowing = False
         for i in range(20):
             for j in range(20):
                 button = wx.Button(
@@ -24,103 +26,80 @@ class MyFrame(wx.Frame):
                         )
                 # original colour is grey
                 button.SetBackgroundColour(wx.Colour(180, 180, 180))
-                button.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-                button.Bind(wx.EVT_MOTION, self.onMotion)
                 button.Bind(wx.EVT_LEFT_UP, self.onLeftUp)
                 self.buttonPool.append(button)
 
-        # use status bar to show the position of the mouse
-        self.CreateStatusBar()
-        panel.Bind(wx.EVT_LEFT_DOWN, self.onLeftDown)
-        panel.Bind(wx.EVT_MOTION, self.onMotion)
-        panel.Bind(wx.EVT_LEFT_UP, self.onLeftUp)
+        generateBtn = wx.Button(panel, label='Generate', pos=((180, 430)))
+        generateBtn.Bind(wx.EVT_LEFT_UP, self.onGenerate)
 
-    def onLeftDown(self, event):
-        """
-        Invoke when pressing on left.
-        Record the center of the circle.
-        """
-        
-        # initialize the colour of the buttons
-        [btn.SetBackgroundColour(wx.Colour(180, 180, 180)) for btn in self.buttonPool]
-        mouseEvent = wx.MouseEvent(event)
-        self.center = self.getPosition(
-                mouseEvent.GetLogicalPosition(wx.ClientDC(self)).Get(),
-                mouseEvent.GetEventObject().GetId()
-                )
-        self.SetStatusText(str(self.center))
-
-    def onMotion(self, event):
-        """
-        Invoke when moving the mouse.
-        Draw a circle on the screen.
-        """
-
-        mouseEvent = wx.MouseEvent(event)
-        # process only when left is being pressed
-        if mouseEvent.Dragging():
-            # get the current position
-            position = self.getPosition(
-                    mouseEvent.GetLogicalPosition(wx.ClientDC(self)).Get(),
-                    mouseEvent.GetEventObject().GetId()
-                    )
-            # calculate the radius
-            self.radius = math.sqrt((position[0] - self.center[0]) ** 2 + (position[1] - self.center[1]) ** 2)
-            dc = wx.ClientDC(self)
-            # remove the previous circles
-            dc.Clear()
-            # force to refresh
-            self.Refresh()
-            self.Update()
-            dc.SetPen(wx.Pen(wx.Colour(0, 0, 255)))
-            dc.SetBrush(wx.Brush(wx.Colour(0, 0, 0), style=wx.BRUSHSTYLE_TRANSPARENT))
-            dc.DrawCircle(*self.center, self.radius)
 
     def onLeftUp(self, event):
         """
-        Invoke when left is released.
-        Generate the final graph.
+        Invoke when left is released on one button.
+        If it's currently showing circles, refresh the window and reinitialize all the buttons.
+        If it's not, turn on or off the clicked button.
         """
 
-        # keep track of the maximum dist and the minimum dist
-        maxDist, minDist = 0, 600
-        for button in self.buttonPool:
-            # get the position of the center of each point
-            centerOfPoint = self.getPosition([5, 5], button.GetId())
-            # make the button blue if it is close to the border of the circle
-            dist = math.sqrt((centerOfPoint[0] - self.center[0]) ** 2 + (centerOfPoint[1] - self.center[1]) ** 2)
-            if self.radius - 9 < dist < self.radius + 9:
-                button.SetBackgroundColour(wx.Colour(0, 0, 255))
-                # the thickness of each point is 5, so +/-5 is needed to avoid the red circles from going through the points
-                if dist + 5 > maxDist:
-                    maxDist = dist + 5
-                elif dist - 5 < minDist:
-                    minDist = dist - 5
-        dc = wx.ClientDC(self)
-        dc.SetPen(wx.Pen(wx.Colour(255, 0, 0)))
-        dc.SetBrush(wx.Brush(wx.Colour(0, 0, 0), style=wx.BRUSHSTYLE_TRANSPARENT))
-        dc.DrawCircle(*self.center, maxDist)
-        dc.DrawCircle(*self.center, minDist)
+        # reinitialize the window
+        if self.isShowing:
+            self.Refresh()
+            [pt.SetBackgroundColour(wx.Colour(180, 180, 180)) for pt in self.onPoints]
+            self.onPoints = []
+            self.isShowing = False
 
-
-    def getPosition(self, position, objectId):
-        """
-        Get real position.
-        param position: relative position
-        param objectId: the ID of the object that triggers the event
-        return: [int] * 2, real position
-        """
-        
-        if objectId < 0:
-            # click on panel, record the position directly
-            return list(position)
+        button = wx.MouseEvent(event).GetEventObject()
+        if button not in self.onPoints:
+            # is currently off
+            self.onPoints.append(button)
+            button.SetBackgroundColour(wx.Colour(0, 0, 255))
         else:
-            # click on button, position is relative within the button, need to add offset
-            return [position[0] + (objectId // 100 + 1) * 20, position[1] + (objectId % 100 + 1) * 20]
+            # is currently on
+            self.onPoints.remove(button)
+            button.SetBackgroundColour(wx.Colour(180, 180, 180))
 
+    def onGenerate(self, event):
+        """
+        Invoke when left is release on generate button.
+        Generate the circle.
+        """
+
+        # FOR THE CIRCLE
+        if len(self.onPoints) == 0:
+            # no points, no circles
+            return
+        elif len(self.onPoints) == 1:
+            # one point, a small circle above it
+            posId = self.onPoints[0].GetId()
+            circle = [5 + (posId // 100 + 1) * 20, (posId % 100 + 1) * 20, 5]
+        elif len(self.onPoints) == 2:
+            # two points, the smallest circle between them
+            posId1, posId2 = self.onPoints[0].GetId(), self.onPoints[1].GetId()
+            x1, y1, x2, y2 = 5 + (posId1 // 100 + 1) * 20, 5 + (posId1 % 100 + 1) * 20, 5 + (posId2 // 100 + 1) * 20, 5 + (posId2 % 100 + 1) * 20
+            circle = [(x1 + x2) / 2, (y1 + y2) / 2, sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) / 2]
+        else:
+            # more points, get the circle with the least squares method
+            a, b, c = symbols('a b c')
+            s = 0
+            for pt in self.onPoints:
+                posId = pt.GetId()
+                x, y = 5 + (posId // 100 + 1) * 20, 5 + (posId % 100 + 1) * 20
+                s += (x ** 2 + y ** 2 + a * x + b * y + c) ** 2
+            res = solve([diff(s, a), diff(s, b), diff(s, c)])
+            # error may occur when the points are in a strange shape
+            while a not in res or b not in res or c not in res:
+                x, y = random.randrange(100, 400), random.randrange(100, 400)
+                s += (x ** 2 + y ** 2 + a * x + b * y + c) ** 2
+                res = solve([diff(s, a), diff(s, b), diff(s, c)])
+            circle = [-res[a] / 2, -res[b] / 2, sqrt(res[a] ** 2 + res[b] ** 2 - 4 * res[c]) / 2]
+        # draw
+        dc = wx.ClientDC(self)
+        dc.SetPen(wx.Pen(wx.Colour(0, 0, 255)))
+        dc.SetBrush(wx.Brush(wx.Colour(0, 0, 0), style=wx.BRUSHSTYLE_TRANSPARENT))
+        dc.DrawCircle(*circle)
+        self.isShowing = True
 
 
 app = wx.App()
-frame = MyFrame(None, title='Draw Circles', size=(440,480))
+frame = MyFrame(None, title='Draw Circles', size=(440,500))
 frame.Show()
 app.MainLoop()
