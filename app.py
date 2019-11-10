@@ -71,18 +71,22 @@ class MyFrame(wx.Frame):
             # one point, a small circle above it
             posId = self.onPoints[0].GetId()
             circle = [5 + (posId // 100 + 1) * 20, (posId % 100 + 1) * 20, 5]
+            ellipse = None
         elif len(self.onPoints) == 2:
             # two points, the smallest circle between them
             posId1, posId2 = self.onPoints[0].GetId(), self.onPoints[1].GetId()
             x1, y1, x2, y2 = 5 + (posId1 // 100 + 1) * 20, 5 + (posId1 % 100 + 1) * 20, 5 + (posId2 // 100 + 1) * 20, 5 + (posId2 % 100 + 1) * 20
             circle = [(x1 + x2) / 2, (y1 + y2) / 2, sqrt((x1 - x2) ** 2 + (y1 - y2) ** 2) / 2]
+            ellipse = None
         else:
             # more points, get the circle with the least squares method
             a, b, c = symbols('a b c')
             s = 0
+            minX, minY, maxX, maxY = 1000, 1000, 0, 0
             for pt in self.onPoints:
                 posId = pt.GetId()
                 x, y = 5 + (posId // 100 + 1) * 20, 5 + (posId % 100 + 1) * 20
+                minX, minY, maxX, maxY = min(minX, x), min(minY, y), max(maxX, x), max(maxY, y)
                 s += (x ** 2 + y ** 2 + a * x + b * y + c) ** 2
             res = solve([diff(s, a), diff(s, b), diff(s, c)])
             # error may occur when the points are in a strange shape
@@ -91,11 +95,15 @@ class MyFrame(wx.Frame):
                 s += (x ** 2 + y ** 2 + a * x + b * y + c) ** 2
                 res = solve([diff(s, a), diff(s, b), diff(s, c)])
             circle = [-res[a] / 2, -res[b] / 2, sqrt(res[a] ** 2 + res[b] ** 2 - 4 * res[c]) / 2]
+            ellipse = [minX, minY, max(1, maxX - minX), max(1, maxY - minY)]
         # draw
         dc = wx.ClientDC(self)
         dc.SetPen(wx.Pen(wx.Colour(0, 0, 255)))
         dc.SetBrush(wx.Brush(wx.Colour(0, 0, 0), style=wx.BRUSHSTYLE_TRANSPARENT))
         dc.DrawCircle(*circle)
+        if ellipse:
+            dc.SetPen(wx.Pen(wx.Colour(255, 0, 0)))
+            dc.DrawEllipse(*ellipse)
         self.isShowing = True
 
 
